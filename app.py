@@ -1,22 +1,24 @@
 import os
 import re
-import time
-from threading import Thread
+from threading import Timer
 
 from revChatGPT.revChatGPT import Chatbot
 from slack_bolt import App
 
-ChatGPTConfig = {
-        "email": os.environ['CHATGPT_EMAIL'],
-        "password": os.environ['CHATGPT_PASSWORD']
-    }
+SLACK_APP_TOKEN = os.environ['SLACK_APP_TOKEN']
+SLACK_BOT_TOKEN = os.environ['SLACK_BOT_TOKEN']
 
-app = App()
-chatbot = Chatbot(ChatGPTConfig, conversation_id=None)
+app = App(token=SLACK_BOT_TOKEN)
 
 # Listen for an event from the Events API
 @app.event("app_mention")
 def event_test(event, say):
+    ChatGPTConfig = {
+        "email": os.environ['CHATGPT_EMAIL'],
+        "password": os.environ['CHATGPT_PASSWORD']
+    }
+    chatbot = Chatbot(ChatGPTConfig, conversation_id=None)
+    
     prompt = re.sub('(?:\s)<@[^, ]*|(?:^)<@[^, ]*', '', event['text'])
     try:
         response = chatbot.get_chat_response(prompt)
@@ -31,12 +33,14 @@ def event_test(event, say):
     say(send)
 
 def chatgpt_refresh():
-    while True:
-        chatbot.refresh_session()
-        time.sleep(60)
+    ChatGPTConfig = {
+        "email": os.environ['CHATGPT_EMAIL'],
+        "password": os.environ['CHATGPT_PASSWORD']
+    }
+    chatbot = Chatbot(ChatGPTConfig, conversation_id=None)
+    chatbot.refresh_session()
+    Timer(60, chatgpt_refresh).start()
 
 if __name__ == "__main__":
-    thread = Thread(target=chatgpt_refresh)
-    thread.start()
+    Timer(60, chatgpt_refresh).start()
     app.start(4000)  # POST http://localhost:4000/slack/events
-    
